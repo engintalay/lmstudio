@@ -592,6 +592,57 @@ body {
     animation: spin 1s linear infinite;
 }
 
+/* Sohbet listesi */
+.chat-list {
+    list-style: none;
+    padding: 0;
+    margin: 0 0 8px 0;
+}
+.chat-list li {
+    padding: 8px 12px;
+    cursor: pointer;
+    border-radius: 6px;
+    margin-bottom: 4px;
+    background: #f3f4f6;
+    transition: background 0.2s;
+}
+.chat-list li.active {
+    background: #e0e7ef;
+    font-weight: bold;
+}
+.sidebar-button {
+    width: 100%;
+    padding: 8px;
+    background: #059669;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 15px;
+    margin-bottom: 8px;
+    transition: background 0.2s;
+}
+.sidebar-button:hover {
+    background: #047857;
+}
+
+/* Export Butonları */
+.header-button {
+    margin-left: 8px;
+    padding: 6px 14px;
+    background: #2563eb;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 15px;
+    transition: background 0.2s;
+}
+
+.header-button:hover {
+    background: #1d4ed8;
+}
+
 /* Animasyonlar */
 @keyframes slideIn {
     from {

@@ -2,7 +2,8 @@
 class LMStudioApp {
     constructor() {
         this.currentModel = null;
-        this.messages = [];
+        this.chats = [];
+        this.currentChatIndex = 0;
         this.isLoading = false;
         this.currentFile = null;
         this.fileContent = '';
@@ -21,6 +22,41 @@ class LMStudioApp {
         await this.checkConnection();
         await this.loadModels();
         this.setupSettings();
+        this.initChats();
+    }
+    
+    initChats() {
+        // Varsayılan bir sohbet oluştur
+        if (this.chats.length === 0) {
+            this.chats.push({ messages: [], name: 'Sohbet 1' });
+        }
+        this.renderChatList();
+        this.loadChat(this.currentChatIndex);
+    }
+
+    renderChatList() {
+        const chatList = document.getElementById('chatList');
+        chatList.innerHTML = '';
+        this.chats.forEach((chat, idx) => {
+            const li = document.createElement('li');
+            li.textContent = chat.name;
+            if (idx === this.currentChatIndex) li.classList.add('active');
+            li.addEventListener('click', () => {
+                this.loadChat(idx);
+            });
+            chatList.appendChild(li);
+        });
+    }
+
+    loadChat(idx) {
+        this.currentChatIndex = idx;
+        this.renderChatList();
+        const chat = this.chats[idx];
+        const messagesContainer = document.getElementById('chatMessages');
+        messagesContainer.innerHTML = '';
+        chat.messages.forEach((msg, i) => {
+            this.addMessage(msg.role, msg.content, false, i);
+        });
     }
     
     async setAppVersion() {
@@ -120,6 +156,26 @@ class LMStudioApp {
         document.getElementById('defaultTemperature').addEventListener('input', (e) => {
             document.getElementById('defaultTemperatureValue').textContent = e.target.value;
         });
+        
+        // Yeni sohbet butonu
+        document.getElementById('newChatButton').addEventListener('click', () => {
+            const newIdx = this.chats.length + 1;
+            this.chats.push({ messages: [], name: `Sohbet ${newIdx}` });
+            this.loadChat(this.chats.length - 1);
+        });
+        
+        document.getElementById('exportDocxButton').addEventListener('click', () => {
+            this.exportChatDocx();
+        });
+        document.getElementById('exportPdfButton').addEventListener('click', () => {
+            this.exportChatPdf();
+        });
+        document.getElementById('summarizeChatButton').addEventListener('click', () => {
+            this.summarizeChat(false);
+        });
+        document.getElementById('updateChatWithSummaryButton').addEventListener('click', () => {
+            this.summarizeChat(true);
+        });
     }
     
     setupStreamingListeners() {
@@ -213,8 +269,8 @@ class LMStudioApp {
         // Kullanıcı mesajını ekle
         this.addMessage('user', message);
         
-        // Girdi kutusunu temizle
-        messageInput.value = '';
+        // Mesajı aktif sohbete kaydet
+        this.chats[this.currentChatIndex].messages.push({ role: 'user', content: message });
         
         // Yükleme durumunu başlat
         this.setLoading(true);
@@ -227,11 +283,16 @@ class LMStudioApp {
                 fullMessage = `Eklenen dosya: ${this.currentFile.name}\n\nDosya içeriği:\n${this.fileContent}\n\nKullanıcı sorusu: ${message}`;
             }
             
-            // Mesaj geçmişini güncelle
-            this.messages.push({ role: 'user', content: fullMessage });
+            // Sadece son mesajı gönder
+            const messagesToSend = [{ role: 'user', content: fullMessage }];
             
             // Streaming kontrolü
             const isStreamingEnabled = document.getElementById('enableStreaming').checked;
+            const settings = {
+                temperature: parseFloat(document.getElementById('temperature').value),
+                maxTokens: parseInt(document.getElementById('maxTokens').value),
+                timeout: this.settings.timeout || 30
+            };
             
             if (isStreamingEnabled) {
                 // Streaming modunda
@@ -242,13 +303,7 @@ class LMStudioApp {
                     this.showTypingIndicator();
                 }
                 
-                const settings = {
-                    temperature: parseFloat(document.getElementById('temperature').value),
-                    maxTokens: parseInt(document.getElementById('maxTokens').value),
-                    timeout: this.settings.timeout || 30
-                };
-                
-                const result = await window.electronAPI.sendChatStream(this.messages, this.currentModel, settings);
+                const result = await window.electronAPI.sendChatStream(messagesToSend, this.currentModel, settings);
                 
                 if (!result.success) {
                     throw new Error(result.error || 'Streaming yanıt alınamadı');
@@ -260,14 +315,14 @@ class LMStudioApp {
                 }
             } else {
                 // Normal modda
-                const result = await window.electronAPI.sendChat(this.messages, this.currentModel);
+                const result = await window.electronAPI.sendChat(messagesToSend, this.currentModel);
                 
                 if (result.success && result.data.choices && result.data.choices[0]) {
                     const aiResponse = result.data.choices[0].message.content;
                     this.addMessage('assistant', aiResponse);
                     
                     // AI yanıtını mesaj geçmişine ekle
-                    this.messages.push({ role: 'assistant', content: aiResponse });
+                    this.chats[this.currentChatIndex].messages.push({ role: 'assistant', content: aiResponse });
                     
                     if (result.data.usage) {
                         this.updateTokenInfo(result.data.usage.total_tokens, settings.maxTokens);
@@ -284,12 +339,26 @@ class LMStudioApp {
         }
     }
     
-    addMessage(role, content, returnElement = false) {
+    addMessage(role, content, returnElement = false, messageIndex = null) {
         const messagesContainer = document.getElementById('chatMessages');
         const msgDiv = document.createElement('div');
         msgDiv.className = role === 'user' ? 'user-message' : 'ai-message';
         if (role === 'assistant') {
             msgDiv.innerHTML = `<div class="message-content">${this.formatMessage(content)}</div>`;
+        } else if (role === 'user') {
+            msgDiv.innerHTML = `<div class="message-content">${content}</div><button class="edit-btn">Düzenle</button><button class="resend-btn">Tekrar Gönder</button>`;
+            // Düzenle butonu
+            msgDiv.querySelector('.edit-btn').addEventListener('click', () => {
+                const messageInput = document.getElementById('messageInput');
+                messageInput.value = content;
+                messageInput.focus();
+            });
+            // Tekrar gönder butonu
+            msgDiv.querySelector('.resend-btn').addEventListener('click', () => {
+                const messageInput = document.getElementById('messageInput');
+                messageInput.value = content;
+                this.sendMessage();
+            });
         } else {
             msgDiv.textContent = content;
         }
@@ -299,10 +368,20 @@ class LMStudioApp {
     }
 
     formatMessage(text) {
-        // Basit markdown ve kod blokları desteği
-        // Kod bloklarını <pre><code> ile, kalın yazıyı <strong> ile, italik <em> ile göster
-        let formatted = text
-            .replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>')
+        // Kod bloklarını tespit et ve escape et
+        const codeBlockRegex = /```([\s\S]*?)```/g;
+        let formatted = text.replace(codeBlockRegex, (match, code) => {
+            // HTML escape
+            const escaped = code
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#39;');
+            return `<pre><code>${escaped}</code></pre>`;
+        });
+        // Diğer markdown biçimlendirmeleri
+        formatted = formatted
             .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
             .replace(/\*(.*?)\*/g, '<em>$1</em>')
             .replace(/\n/g, '<br>');
@@ -405,12 +484,6 @@ class LMStudioApp {
                 ? this.fileContent.substring(0, 500) + '...' 
                 : this.fileContent;
                 
-            const fileMessage = `📎 **${this.currentFile.name}** dosyası eklendi (${this.formatFileSize(this.currentFile.size)})\n\nÖzet:\n${preview}`;
-            this.addMessage('system', fileMessage);
-        }
-    }
-    
-    formatFileSize(bytes) {
         if (bytes === 0) return '0 Bytes';
         const k = 1024;
         const sizes = ['Bytes', 'KB', 'MB', 'GB'];
@@ -703,6 +776,36 @@ class LMStudioApp {
         if (streamingStatus) {
             streamingStatus.remove();
         }
+    }
+    
+    exportChatDocx() {
+        // Basit metin tabanlı DOCX export
+        const chat = this.chats[this.currentChatIndex];
+        let docText = '';
+        chat.messages.forEach(msg => {
+            docText += `${msg.role === 'user' ? 'Kullanıcı' : 'Asistan'}: ${msg.content}\n\n`;
+        });
+        // Mammoth ile DOCX oluşturulabilir, burada basit bir blob ile indiriliyor
+        const blob = new Blob([docText], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `${chat.name}.docx`;
+        link.click();
+    }
+
+    exportChatPdf() {
+        // Basit metin tabanlı PDF export
+        const chat = this.chats[this.currentChatIndex];
+        let pdfText = '';
+        chat.messages.forEach(msg => {
+            pdfText += `${msg.role === 'user' ? 'Kullanıcı' : 'Asistan'}: ${msg.content}\n\n`;
+        });
+        // jsPDF ile PDF oluşturulabilir, burada basit bir blob ile indiriliyor
+        const blob = new Blob([pdfText], { type: 'application/pdf' });
+        const link = document.createElement('a');
+        link.href = URL.createObjectURL(blob);
+        link.download = `${chat.name}.pdf`;
+        link.click();
     }
 }
 

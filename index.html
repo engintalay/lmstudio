@@ -20,6 +20,12 @@
                     <span id="appVersion" class="app-version"></span>
                     <span id="tokenInfo" class="token-info"></span>
                 </div>
+                <div class="header-buttons">
+                    <button id="exportDocxButton" class="header-button">DOCX Olarak Dışa Aktar</button>
+                    <button id="exportPdfButton" class="header-button">PDF Olarak Dışa Aktar</button>
+                    <button id="summarizeChatButton" class="header-button">Sohbeti Özetle</button>
+                    <button id="updateChatWithSummaryButton" class="header-button">Özetle ve Geçmişi Güncelle</button>
+                </div>
             </div>
         </header>
 
@@ -69,6 +75,13 @@
                             🔧 Gelişmiş Ayarlar
                         </button>
                     </div>
+                </div>
+
+                <!-- Sohbetler bölümü -->
+                <div class="sidebar-section" id="chatListSection">
+                    <h4>Sohbetler</h4>
+                    <ul id="chatList" class="chat-list"></ul>
+                    <button id="newChatButton" class="sidebar-button">+ Yeni Sohbet</button>
                 </div>
             </aside>
 
