@@ -41,19 +41,20 @@
       "renderer.js",
       "index.html",
       "styles.css",
-      "preload.js"
+      "preload.js",
+      "assets/**"
     ],
     "win": {
       "target": "nsis",
-      "icon": "assets/icon.ico"
+      "icon": "assets/new-logo.png"
     },
     "mac": {
       "target": "dmg",
-      "icon": "assets/icon.icns"
+      "icon": "assets/new-logo.png"
     },
     "linux": {
       "target": "AppImage",
-      "icon": "assets/icon.png"
+      "icon": "assets/new-logo.png"
     }
   }
 }
