@@ -113,6 +113,8 @@ ipcMain.handle('lm-studio-chat', async (event, messages, model = null) => {
   }
 });
 
+let currentStreamController = null;
+
 // Streaming chat API
 ipcMain.handle('lm-studio-chat-stream', async (event, messages, model = null, settings = {}) => {
   try {
@@ -124,9 +126,12 @@ ipcMain.handle('lm-studio-chat-stream', async (event, messages, model = null, se
       stream: true
     };
 
+    // AbortController ile streaming'i durdurabilmek için
+    currentStreamController = new AbortController();
     const response = await axios.post(`${LM_STUDIO_BASE_URL}/v1/chat/completions`, payload, {
       responseType: 'stream',
-      timeout: (settings.timeout || 30) * 1000
+      timeout: (settings.timeout || 30) * 1000,
+      signal: currentStreamController.signal
     });
 
     return new Promise((resolve, reject) => {
@@ -187,6 +192,15 @@ ipcMain.handle('lm-studio-chat-stream', async (event, messages, model = null, se
     console.error('Streaming sohbet isteği başarısız:', error.message);
     return { success: false, error: error.message };
   }
+});
+
+ipcMain.handle('cancel-stream', async () => {
+  if (currentStreamController) {
+    currentStreamController.abort();
+    currentStreamController = null;
+    return { success: true };
+  }
+  return { success: false, error: 'Aktif bir stream yok.' };
 });
 
 ipcMain.handle('lm-studio-health', async () => {

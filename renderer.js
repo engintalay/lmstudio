@@ -176,6 +176,10 @@ class LMStudioApp {
         document.getElementById('updateChatWithSummaryButton').addEventListener('click', () => {
             this.summarizeChat(true);
         });
+        
+        document.getElementById('stopButton').addEventListener('click', () => {
+            this.stopStreaming();
+        });
     }
     
     setupStreamingListeners() {
@@ -484,6 +488,12 @@ class LMStudioApp {
                 ? this.fileContent.substring(0, 500) + '...' 
                 : this.fileContent;
                 
+            const fileMessage = `📎 **${this.currentFile.name}** dosyası eklendi (${this.formatFileSize(this.currentFile.size)})\n\nÖzet:\n${preview}`;
+            this.addMessage('system', fileMessage);
+        }
+    }
+    
+    formatFileSize(bytes) {
         if (bytes === 0) return '0 Bytes';
         const k = 1024;
         const sizes = ['Bytes', 'KB', 'MB', 'GB'];
@@ -693,7 +703,11 @@ class LMStudioApp {
             this.currentStreamingMessage.classList.remove('streaming');
             const messageContent = this.currentStreamingMessage.querySelector('.message-content');
             if (messageContent) {
-                messageContent.innerHTML = this.formatMessage(data.content);
+                if (data && data.error === 'canceled') {
+                    messageContent.innerHTML = '<span style="color:#dc2626">İşlem iptal edildi.</span>';
+                } else {
+                    messageContent.innerHTML = this.formatMessage(data.content);
+                }
             }
             // Zaman damgası ekle
             if (!messageContent.querySelector('.message-time')) {
@@ -709,17 +723,19 @@ class LMStudioApp {
         }
     }
     
+    // Streaming error handler
     handleStreamError(data) {
-        this.hideTypingIndicator();
-        this.hideStreamingStatus();
-        
         if (this.currentStreamingMessage) {
-            this.currentStreamingMessage.remove();
+            const messageContent = this.currentStreamingMessage.querySelector('.message-content');
+            if (data && data.error === 'canceled') {
+                messageContent.innerHTML = '<span style="color:#dc2626">İşlem iptal edildi.</span>';
+            } else {
+                messageContent.innerHTML = `<span style="color:#dc2626">❌ Streaming hatası: ${data.error}</span>`;
+            }
         }
-        
-        this.addMessage('assistant', `❌ Streaming hatası: ${data.error}`);
-        this.currentStreamingMessage = null;
         this.setLoading(false);
+        this.hideStreamingStatus();
+        this.hideTypingIndicator();
     }
     
     showTypingIndicator() {
@@ -806,6 +822,38 @@ class LMStudioApp {
         link.href = URL.createObjectURL(blob);
         link.download = `${chat.name}.pdf`;
         link.click();
+    }
+    
+    async summarizeChat(updateHistory = false) {
+        const chat = this.chats[this.currentChatIndex];
+        // Tüm mesajları birleştir
+        const allText = chat.messages.map(msg => `${msg.role === 'user' ? 'Kullanıcı' : 'Asistan'}: ${msg.content}`).join('\n');
+        // Basit özetleme için AI'ya özet isteği gönder
+        const summaryPrompt = `Aşağıdaki sohbeti özetle:\n${allText}`;
+        // Sadece özet için son mesaj olarak gönder
+        const messagesToSend = [{ role: 'user', content: summaryPrompt }];
+        const result = await window.electronAPI.sendChat(messagesToSend, this.currentModel);
+        if (result.success && result.data.choices && result.data.choices[0]) {
+            const summary = result.data.choices[0].message.content;
+            this.addMessage('system', `Sohbet Özeti:\n${summary}`);
+            if (updateHistory) {
+                // Sohbet geçmişini özet ile değiştir
+                this.chats[this.currentChatIndex].messages = [{ role: 'system', content: `Sohbet Özeti:\n${summary}` }];
+                this.loadChat(this.currentChatIndex);
+            }
+        } else {
+            this.addMessage('system', '❌ Özetleme başarısız.');
+        }
+    }
+    
+    stopStreaming() {
+        // Streaming işlemini durdurmak için
+        if (window.electronAPI.cancelStream) {
+            window.electronAPI.cancelStream();
+        }
+        this.setLoading(false);
+        this.hideStreamingStatus();
+        this.hideTypingIndicator();
     }
 }
 

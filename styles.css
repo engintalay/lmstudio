@@ -643,6 +643,13 @@ body {
     background: #1d4ed8;
 }
 
+.header-button#stopButton {
+    background: #dc2626;
+}
+.header-button#stopButton:hover {
+    background: #b91c1c;
+}
+
 /* Animasyonlar */
 @keyframes slideIn {
     from {
@@ -997,4 +1004,14 @@ body {
     .button {
         flex: 1;
     }
+}
+
+.logo-area {
+    display: flex;
+    align-items: center;
+    margin-bottom: 16px;
+}
+.app-logo {
+    height: 40px;
+    width: auto;
 }

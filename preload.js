@@ -31,5 +31,8 @@ contextBridge.exposeInMainWorld('electronAPI', {
   testConnection: (serverUrl) => ipcRenderer.invoke('test-connection', serverUrl),
   
   // Sürüm bilgisi
-  getAppVersion: () => ipcRenderer.invoke('get-app-version')
+  getAppVersion: () => ipcRenderer.invoke('get-app-version'),
+  
+  // Streaming işlemini durdurmak
+  cancelStream: async () => await ipcRenderer.invoke('cancel-stream')
 });
