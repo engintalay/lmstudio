@@ -49,13 +49,22 @@ class LMStudioApp {
     }
 
     loadChat(idx) {
+        // Yeni sohbete geçerken önceki streaming işlemini durdur
+        this.stopStreaming();
         this.currentChatIndex = idx;
         this.renderChatList();
         const chat = this.chats[idx];
         const messagesContainer = document.getElementById('chatMessages');
         messagesContainer.innerHTML = '';
         chat.messages.forEach((msg, i) => {
-            this.addMessage(msg.role, msg.content, false, i);
+            // AI cevabı ise kopyala butonu ekle, kullanıcı mesajı ise düzenle/tekrar gönder butonu ekle
+            if (msg.role === 'assistant') {
+                this.addMessage('assistant', msg.content, false, i);
+            } else if (msg.role === 'user') {
+                this.addMessage('user', msg.content, false, i);
+            } else {
+                this.addMessage(msg.role, msg.content, false, i);
+            }
         });
     }
     
@@ -707,6 +716,8 @@ class LMStudioApp {
                     messageContent.innerHTML = '<span style="color:#dc2626">İşlem iptal edildi.</span>';
                 } else {
                     messageContent.innerHTML = this.formatMessage(data.content);
+                    // Streaming cevabını aktif sohbetin geçmişine ekle
+                    this.chats[this.currentChatIndex].messages.push({ role: 'assistant', content: data.content });
                 }
             }
             // Zaman damgası ekle
@@ -721,6 +732,9 @@ class LMStudioApp {
         if (data && data.token_usage) {
             this.updateTokenInfo(data.token_usage.used, data.token_usage.max);
         }
+        // Streaming status ibaresini kaldır ve yanıt tamamlandı mesajı göster
+        this.hideStreamingStatus();
+        this.showStreamingCompleted();
     }
     
     // Streaming error handler
