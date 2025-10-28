@@ -24,8 +24,8 @@
                     <span id="tokenInfo" class="token-info"></span>
                 </div>
                 <div class="header-buttons">
-                    <button id="exportDocxButton" class="header-button">DOCX Olarak Dışa Aktar</button>
-                    <button id="exportPdfButton" class="header-button">PDF Olarak Dışa Aktar</button>
+                    <button id="exportDocxButton" style="display: none;" class="header-button">DOCX Olarak Dışa Aktar</button>
+                    <button id="exportPdfButton" style="display: none;" class="header-button">PDF Olarak Dışa Aktar</button>
                     <button id="summarizeChatButton" class="header-button">Sohbeti Özetle</button>
                     <button id="updateChatWithSummaryButton" class="header-button">Özetle ve Geçmişi Güncelle</button>
                     <button id="stopButton" class="header-button">Durdur</button>
@@ -104,10 +104,11 @@
                     </div>
                 </div>
                 
-                <div id="exportSelectedContainer" style="display: flex; gap: 10px; margin-bottom: 10px;">
+                <div id="exportSelectedContainer" style="display: none; gap: 10px; margin-bottom: 10px;">
                     <button id="exportSelectedPdf" class="modern-btn">Seçili Mesajları PDF Olarak Dışa Aktar</button>
                     <button id="exportSelectedDocx" class="modern-btn">Seçili Mesajları DOCX Olarak Dışa Aktar</button>
                 </div>
+
                 
                 <div class="chat-input-area">
                     <div class="input-group">
