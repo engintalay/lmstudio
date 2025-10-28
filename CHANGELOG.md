@@ -4,6 +4,23 @@ Bu dosya projeye eklenen tüm önemli değişiklikleri içerir.
 
 Format [Keep a Changelog](https://keepachangelog.com/en/1.0.0/) standardına dayanır ve bu proje [Semantic Versioning](https://semver.org/spec/v2.0.0.html) kullanır.
 
+## [1.2.0] - 2025-10-28
+
+### Changed 🛠
+- PDF ve DOCX olarak dışa aktarma düğmeleri arayüzden geçici olarak kaldırıldı.
+- Sürüm numarası 1.2.0 olarak güncellendi.
+
+## [1.1.0] - 2025-10-28
+
+### Eklendi
+- Cevaplar ekranda formatlı (markdown/kod blokları) gösteriliyor
+- Uygulama sürümü ve token bilgisi üst barda gösteriliyor
+
+### Düzeltildi
+- Gönder düğmesi ve mesaj ekleme hatası giderildi
+
+---
+
 ## [1.0.0] - 2025-10-28
 
 ### Added ✨
@@ -62,35 +79,6 @@ lmstudio-desktop/
 ### Known Issues 🐛
 - Electron builder'da Windows symbolic link uyarıları (kritik değil)
 - DevTools'da Autofill API uyarıları (işlevselliği etkilemez)
-
----
-
-## [1.1.0] - 2025-10-28
-
-### Eklendi
-- Cevaplar ekranda formatlı (markdown/kod blokları) gösteriliyor
-- Uygulama sürümü ve token bilgisi üst barda gösteriliyor
-
-### Düzeltildi
-- Gönder düğmesi ve mesaj ekleme hatası giderildi
-
----
-
-## Gelecek Sürümler İçin Planlananlar 🚀
-
-### [1.2.0] - Planlanan
-- **Eklenti Sistemi**: Üçüncü parti eklenti desteği
-- **Sohbet Dışa Aktarma**: PDF/HTML formatında kaydetme
-- **Gelişmiş Dosya Desteği**: Excel, PowerPoint dosyaları
-- **Sesli Sohbet**: Mikrofon ve hoparlör entegrasyonu
-- **Çoklu Model**: Aynı anda birden fazla model kullanma
-
-### [2.0.0] - Uzun Vadeli
-- **Bulut Entegrasyonu**: Çevrimiçi AI servisleri desteği
-- **Takım Çalışması**: Çoklu kullanıcı sohbet odaları
-- **AI Workflow**: Otomatik görev zincirleri
-- **Plugin Store**: Eklenti mağazası
-- **Mobile Sync**: Mobil uygulama senkronizasyonu
 
 ---
 
