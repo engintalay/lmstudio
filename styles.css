@@ -699,6 +699,33 @@ body {
     margin-top: 8px;
 }
 
+/* Modern Buton Stili */
+.modern-btn {
+  background: linear-gradient(90deg, #4f8cff 0%, #1cb5e0 100%);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 8px 18px;
+  font-size: 15px;
+  font-weight: 500;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(76, 175, 255, 0.15);
+  transition: background 0.2s, box-shadow 0.2s;
+}
+.modern-btn:hover {
+  background: linear-gradient(90deg, #1cb5e0 0%, #4f8cff 100%);
+  box-shadow: 0 4px 16px rgba(76, 175, 255, 0.25);
+}
+
+/* Seçim Kutusu Stili */
+.select-msg {
+  accent-color: #4f8cff;
+  width: 18px;
+  height: 18px;
+  margin-right: 8px;
+  vertical-align: middle;
+}
+
 /* Animasyonlar */
 @keyframes slideIn {
     from {
@@ -1063,4 +1090,22 @@ body {
 .app-logo {
     height: 40px;
     width: auto;
+}
+
+.copy-btn {
+  background: linear-gradient(90deg, #43e97b 0%, #38f9d7 100%);
+  color: #fff;
+  border: none;
+  border-radius: 6px;
+  padding: 6px 14px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  margin-left: 10px;
+  box-shadow: 0 2px 8px rgba(67, 233, 123, 0.15);
+  transition: background 0.2s, box-shadow 0.2s;
+}
+.copy-btn:hover {
+  background: linear-gradient(90deg, #38f9d7 0%, #43e97b 100%);
+  box-shadow: 0 4px 16px rgba(67, 233, 123, 0.25);
 }

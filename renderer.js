@@ -204,6 +204,38 @@ class LMStudioApp {
         document.getElementById('stopButton').addEventListener('click', () => {
             this.stopStreaming();
         });
+        
+        // Seçili mesajları PDF olarak dışa aktar
+        document.getElementById('exportSelectedPdf').addEventListener('click', async () => {
+            const jsPDF = (await import('jspdf')).jsPDF;
+            const doc = new jsPDF();
+            const selected = Array.from(document.querySelectorAll('.select-msg:checked'));
+            let y = 10;
+            selected.forEach((checkbox, i) => {
+                const msgDiv = checkbox.parentElement;
+                const content = msgDiv.querySelector('.message-content').innerText;
+                doc.text(content, 10, y);
+                y += 10;
+            });
+            doc.save('secili-mesajlar.pdf');
+        });
+
+        // Seçili mesajları DOCX olarak dışa aktar
+        document.getElementById('exportSelectedDocx').addEventListener('click', async () => {
+            const { Document, Packer, Paragraph } = await import('docx');
+            const selected = Array.from(document.querySelectorAll('.select-msg:checked'));
+            const paragraphs = selected.map(checkbox => {
+                const msgDiv = checkbox.parentElement;
+                const content = msgDiv.querySelector('.message-content').innerText;
+                return new Paragraph(content);
+            });
+            const doc = new Document({ sections: [{ properties: {}, children: paragraphs }] });
+            const buffer = await Packer.toBlob(doc);
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(buffer);
+            a.download = 'secili-mesajlar.docx';
+            a.click();
+        });
     }
     
     setupStreamingListeners() {
@@ -350,26 +382,37 @@ class LMStudioApp {
         const messagesContainer = document.getElementById('chatMessages');
         const msgDiv = document.createElement('div');
         msgDiv.className = role === 'user' ? 'user-message' : 'ai-message';
+        // Seçim kutusu ekle
+        const checkbox = document.createElement('input');
+        checkbox.type = 'checkbox';
+        checkbox.className = 'select-msg';
+        msgDiv.appendChild(checkbox);
+        // Mesaj içeriği
+        const contentDiv = document.createElement('div');
+        contentDiv.className = 'message-content';
         if (role === 'assistant') {
-            msgDiv.innerHTML = `<div class="message-content">${this.formatMessage(content)}</div><button class="copy-btn">Kopyala</button>`;
+            contentDiv.innerHTML = this.formatMessage(content);
+            msgDiv.appendChild(contentDiv);
             // Kopyala butonu
-            msgDiv.querySelector('.copy-btn').addEventListener('click', () => {
-                navigator.clipboard.writeText(content);
+            const copyBtn = document.createElement('button');
+            copyBtn.className = 'copy-btn';
+            copyBtn.textContent = 'Kopyala';
+            copyBtn.addEventListener('click', () => {
+                navigator.clipboard.writeText(contentDiv.innerText);
             });
+            msgDiv.appendChild(copyBtn);
         } else if (role === 'user') {
-            msgDiv.innerHTML = `<div class="message-content">${content}</div><button class="edit-btn">Düzenle</button><button class="resend-btn">Tekrar Gönder</button>`;
+            contentDiv.textContent = content;
+            msgDiv.appendChild(contentDiv);
             // Düzenle butonu
-            msgDiv.querySelector('.edit-btn').addEventListener('click', () => {
-                const messageInput = document.getElementById('messageInput');
-                messageInput.value = content;
-                messageInput.focus();
-            });
-            // Tekrar gönder butonu
-            msgDiv.querySelector('.resend-btn').addEventListener('click', () => {
-                const messageInput = document.getElementById('messageInput');
-                messageInput.value = content;
-                this.sendMessage();
-            });
+            const editBtn = document.createElement('button');
+            editBtn.className = 'edit-btn';
+            editBtn.textContent = 'Düzenle';
+            msgDiv.appendChild(editBtn);
+            const resendBtn = document.createElement('button');
+            resendBtn.className = 'resend-btn';
+            resendBtn.textContent = 'Tekrar Gönder';
+            msgDiv.appendChild(resendBtn);
         } else {
             msgDiv.textContent = content;
         }
@@ -882,3 +925,37 @@ class LMStudioApp {
 document.addEventListener('DOMContentLoaded', () => {
     new LMStudioApp();
 });
+
+window.onload = function() {
+    // Seçili mesajları PDF olarak dışa aktar
+    document.getElementById('exportSelectedPdf').addEventListener('click', async () => {
+        const jsPDF = (await import('jspdf')).jsPDF;
+        const doc = new jsPDF();
+        const selected = Array.from(document.querySelectorAll('.select-msg:checked'));
+        let y = 10;
+        selected.forEach((checkbox, i) => {
+            const msgDiv = checkbox.parentElement;
+            const content = msgDiv.querySelector('.message-content').innerText;
+            doc.text(content, 10, y);
+            y += 10;
+        });
+        doc.save('secili-mesajlar.pdf');
+    });
+
+    // Seçili mesajları DOCX olarak dışa aktar
+    document.getElementById('exportSelectedDocx').addEventListener('click', async () => {
+        const { Document, Packer, Paragraph } = await import('docx');
+        const selected = Array.from(document.querySelectorAll('.select-msg:checked'));
+        const paragraphs = selected.map(checkbox => {
+            const msgDiv = checkbox.parentElement;
+            const content = msgDiv.querySelector('.message-content').innerText;
+            return new Paragraph(content);
+        });
+        const doc = new Document({ sections: [{ properties: {}, children: paragraphs }] });
+        const buffer = await Packer.toBlob(doc);
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(buffer);
+        a.download = 'secili-mesajlar.docx';
+        a.click();
+    });
+};
