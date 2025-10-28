@@ -1,71 +1,30 @@
+import { ChatManager } from './renderer/chat.js';
+import { SettingsManager } from './renderer/settings.js';
+import { StreamingManager } from './renderer/streaming.js';
+import { FileManager } from './renderer/file.js';
+
 // Renderer süreci - UI işlemlerini yönetir
 class LMStudioApp {
     constructor() {
+        this.chatManager = new ChatManager();
+        this.settingsManager = new SettingsManager();
+        this.streamingManager = new StreamingManager(this);
+        this.fileManager = new FileManager();
         this.currentModel = null;
-        this.chats = [];
-        this.currentChatIndex = 0;
         this.isLoading = false;
-        this.currentFile = null;
-        this.fileContent = '';
-        this.settings = {};
-        this.currentStreamingMessage = null;
-        this.streamingMessageId = null;
         
         this.initializeApp();
     }
     
     async initializeApp() {
-        await this.loadSettings();
+        await this.settingsManager.loadSettings();
         this.bindEvents();
-        this.setupStreamingListeners();
+        this.streamingManager.setupStreamingListeners();
         await this.setAppVersion();
         await this.checkConnection();
         await this.loadModels();
         this.setupSettings();
-        this.initChats();
-    }
-    
-    initChats() {
-        // Varsayılan bir sohbet oluştur
-        if (this.chats.length === 0) {
-            this.chats.push({ messages: [], name: 'Sohbet 1' });
-        }
-        this.renderChatList();
-        this.loadChat(this.currentChatIndex);
-    }
-
-    renderChatList() {
-        const chatList = document.getElementById('chatList');
-        chatList.innerHTML = '';
-        this.chats.forEach((chat, idx) => {
-            const li = document.createElement('li');
-            li.textContent = chat.name;
-            if (idx === this.currentChatIndex) li.classList.add('active');
-            li.addEventListener('click', () => {
-                this.loadChat(idx);
-            });
-            chatList.appendChild(li);
-        });
-    }
-
-    loadChat(idx) {
-        // Yeni sohbete geçerken önceki streaming işlemini durdur
-        this.stopStreaming();
-        this.currentChatIndex = idx;
-        this.renderChatList();
-        const chat = this.chats[idx];
-        const messagesContainer = document.getElementById('chatMessages');
-        messagesContainer.innerHTML = '';
-        chat.messages.forEach((msg, i) => {
-            // AI cevabı ise kopyala butonu ekle, kullanıcı mesajı ise düzenle/tekrar gönder butonu ekle
-            if (msg.role === 'assistant') {
-                this.addMessage('assistant', msg.content, false, i);
-            } else if (msg.role === 'user') {
-                this.addMessage('user', msg.content, false, i);
-            } else {
-                this.addMessage(msg.role, msg.content, false, i);
-            }
-        });
+        this.chatManager.initChats();
     }
     
     async setAppVersion() {
@@ -207,23 +166,46 @@ class LMStudioApp {
         
         // Seçili mesajları PDF olarak dışa aktar
         document.getElementById('exportSelectedPdf').addEventListener('click', async () => {
-            const jsPDF = (await import('jspdf')).jsPDF;
-            const doc = new jsPDF();
+            // PDF export fonksiyonu (require yerine import)
+            async function exportChatPdf(selectedMessages) {
+                let jsPDF;
+                try {
+                    jsPDF = (await import('jspdf')).default;
+                } catch {
+                    jsPDF = (await import('jspdf')).jsPDF;
+                }
+                const doc = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+                let y = 20;
+                doc.setFont('helvetica', 'normal');
+                doc.setFontSize(13);
+                selectedMessages.forEach((content) => {
+                    const lines = doc.splitTextToSize(content, 180);
+                    doc.text(lines, 15, y);
+                    y += lines.length * 8 + 8;
+                });
+                doc.save('secili-mesajlar.pdf');
+            }
+
             const selected = Array.from(document.querySelectorAll('.select-msg:checked'));
-            let y = 10;
-            selected.forEach((checkbox, i) => {
+            if (selected.length === 0) {
+                alert('Lütfen dışa aktarmak için en az bir mesaj seçin.');
+                return;
+            }
+            const selectedMessages = selected.map(checkbox => {
                 const msgDiv = checkbox.parentElement;
-                const content = msgDiv.querySelector('.message-content').innerText;
-                doc.text(content, 10, y);
-                y += 10;
+                return msgDiv.querySelector('.message-content').innerText;
             });
-            doc.save('secili-mesajlar.pdf');
+            await exportChatPdf(selectedMessages);
         });
 
         // Seçili mesajları DOCX olarak dışa aktar
         document.getElementById('exportSelectedDocx').addEventListener('click', async () => {
             const { Document, Packer, Paragraph } = await import('docx');
             const selected = Array.from(document.querySelectorAll('.select-msg:checked'));
+            if (selected.length === 0) {
+                alert('Lütfen dışa aktarmak için en az bir mesaj seçin.');
+                return;
+            }
             const paragraphs = selected.map(checkbox => {
                 const msgDiv = checkbox.parentElement;
                 const content = msgDiv.querySelector('.message-content').innerText;
@@ -925,37 +907,3 @@ class LMStudioApp {
 document.addEventListener('DOMContentLoaded', () => {
     new LMStudioApp();
 });
-
-window.onload = function() {
-    // Seçili mesajları PDF olarak dışa aktar
-    document.getElementById('exportSelectedPdf').addEventListener('click', async () => {
-        const jsPDF = (await import('jspdf')).jsPDF;
-        const doc = new jsPDF();
-        const selected = Array.from(document.querySelectorAll('.select-msg:checked'));
-        let y = 10;
-        selected.forEach((checkbox, i) => {
-            const msgDiv = checkbox.parentElement;
-            const content = msgDiv.querySelector('.message-content').innerText;
-            doc.text(content, 10, y);
-            y += 10;
-        });
-        doc.save('secili-mesajlar.pdf');
-    });
-
-    // Seçili mesajları DOCX olarak dışa aktar
-    document.getElementById('exportSelectedDocx').addEventListener('click', async () => {
-        const { Document, Packer, Paragraph } = await import('docx');
-        const selected = Array.from(document.querySelectorAll('.select-msg:checked'));
-        const paragraphs = selected.map(checkbox => {
-            const msgDiv = checkbox.parentElement;
-            const content = msgDiv.querySelector('.message-content').innerText;
-            return new Paragraph(content);
-        });
-        const doc = new Document({ sections: [{ properties: {}, children: paragraphs }] });
-        const buffer = await Packer.toBlob(doc);
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(buffer);
-        a.download = 'secili-mesajlar.docx';
-        a.click();
-    });
-};
