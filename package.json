@@ -1,6 +1,6 @@
 {
   "name": "lmstudio-desktop",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "LM Studio entegrasyonlu modern masaüstü uygulaması",
   "main": "main.js",
   "scripts": {

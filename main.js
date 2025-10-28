@@ -5,6 +5,8 @@ const axios = require('axios');
 const pdfParse = require('pdf-parse');
 const mammoth = require('mammoth');
 
+const appVersion = require('./package.json').version;
+
 // LM Studio varsayılan ayarları
 let LM_STUDIO_BASE_URL = 'http://localhost:1234';
 
@@ -64,7 +66,10 @@ function createWindow() {
 }
 
 // Uygulama hazır olduğunda pencereyi oluştur
-app.whenReady().then(createWindow);
+app.whenReady().then(() => {
+  global.sharedVersion = appVersion;
+  createWindow();
+});
 
 // Tüm pencereler kapatıldığında uygulamayı sonlandır (macOS hariç)
 app.on('window-all-closed', () => {
@@ -104,6 +109,82 @@ ipcMain.handle('lm-studio-chat', async (event, messages, model = null) => {
     return { success: true, data: response.data };
   } catch (error) {
     console.error('Sohbet isteği başarısız:', error.message);
+    return { success: false, error: error.message };
+  }
+});
+
+// Streaming chat API
+ipcMain.handle('lm-studio-chat-stream', async (event, messages, model = null, settings = {}) => {
+  try {
+    const payload = {
+      model: model || 'local-model',
+      messages: messages,
+      temperature: settings.temperature || 0.7,
+      max_tokens: settings.maxTokens || 1000,
+      stream: true
+    };
+
+    const response = await axios.post(`${LM_STUDIO_BASE_URL}/v1/chat/completions`, payload, {
+      responseType: 'stream',
+      timeout: (settings.timeout || 30) * 1000
+    });
+
+    return new Promise((resolve, reject) => {
+      let fullResponse = '';
+      let isFirstChunk = true;
+
+      response.data.on('data', (chunk) => {
+        const lines = chunk.toString().split('\n');
+        
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const data = line.slice(6).trim();
+            
+            if (data === '[DONE]') {
+              resolve({ success: true, content: fullResponse, completed: true });
+              return;
+            }
+
+            try {
+              const parsed = JSON.parse(data);
+              const content = parsed.choices?.[0]?.delta?.content;
+              
+              if (content) {
+                fullResponse += content;
+                
+                // İlk chunk'ta stream başlatıldığını bildir
+                if (isFirstChunk) {
+                  event.sender.send('stream-start', { messageId: Date.now() });
+                  isFirstChunk = false;
+                }
+                
+                // Her chunk'ı frontend'e gönder
+                event.sender.send('stream-chunk', { 
+                  content: content,
+                  fullContent: fullResponse 
+                });
+              }
+            } catch (parseError) {
+              console.warn('JSON parse hatası:', parseError.message);
+            }
+          }
+        }
+      });
+
+      response.data.on('end', () => {
+        event.sender.send('stream-end', { content: fullResponse });
+        resolve({ success: true, content: fullResponse, completed: true });
+      });
+
+      response.data.on('error', (error) => {
+        console.error('Stream hatası:', error.message);
+        event.sender.send('stream-error', { error: error.message });
+        reject({ success: false, error: error.message });
+      });
+    });
+
+  } catch (error) {
+    console.error('Streaming sohbet isteği başarısız:', error.message);
     return { success: false, error: error.message };
   }
 });
@@ -280,4 +361,8 @@ ipcMain.handle('test-connection', async (event, serverUrl) => {
       error: error.message 
     };
   }
+});
+
+ipcMain.handle('get-app-version', async () => {
+  return { version: appVersion };
 });

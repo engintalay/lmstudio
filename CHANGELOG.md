@@ -65,14 +65,18 @@ lmstudio-desktop/
 
 ---
 
-## Gelecek Sürümler İçin Planlananlar 🚀
+## [1.1.0] - 2025-10-28
 
-### [1.1.0] - Yakında
-- **Tema Sistemi**: Koyu/açık tema değiştirme
-- **Ses Bildirimleri**: Mesaj geldiğinde ses çalma
-- **Sohbet Geçmişi**: Konuşmaları kaydetme ve yükleme
-- **Klavye Kısayolları**: Hızlı erişim tuşları
-- **Çoklu Dil**: İngilizce dil desteği
+### Eklendi
+- Cevaplar ekranda formatlı (markdown/kod blokları) gösteriliyor
+- Uygulama sürümü ve token bilgisi üst barda gösteriliyor
+
+### Düzeltildi
+- Gönder düğmesi ve mesaj ekleme hatası giderildi
+
+---
+
+## Gelecek Sürümler İçin Planlananlar 🚀
 
 ### [1.2.0] - Planlanan
 - **Eklenti Sistemi**: Üçüncü parti eklenti desteği

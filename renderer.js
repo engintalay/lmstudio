@@ -7,6 +7,8 @@ class LMStudioApp {
         this.currentFile = null;
         this.fileContent = '';
         this.settings = {};
+        this.currentStreamingMessage = null;
+        this.streamingMessageId = null;
         
         this.initializeApp();
     }
@@ -14,9 +16,29 @@ class LMStudioApp {
     async initializeApp() {
         await this.loadSettings();
         this.bindEvents();
+        this.setupStreamingListeners();
+        await this.setAppVersion();
         await this.checkConnection();
         await this.loadModels();
         this.setupSettings();
+    }
+    
+    async setAppVersion() {
+        try {
+            const result = await window.electronAPI.getAppVersion();
+            if (result && result.version) {
+                document.getElementById('appVersion').textContent = `v${result.version}`;
+            }
+        } catch (error) {
+            document.getElementById('appVersion').textContent = '';
+        }
+    }
+    
+    updateTokenInfo(used, max) {
+        const tokenInfo = document.getElementById('tokenInfo');
+        if (tokenInfo) {
+            tokenInfo.textContent = `Token: ${used} / ${max}`;
+        }
     }
     
     bindEvents() {
@@ -97,6 +119,25 @@ class LMStudioApp {
         // Gerçek zamanlı sıcaklık güncelleme
         document.getElementById('defaultTemperature').addEventListener('input', (e) => {
             document.getElementById('defaultTemperatureValue').textContent = e.target.value;
+        });
+    }
+    
+    setupStreamingListeners() {
+        // Streaming event listeners
+        window.electronAPI.onStreamStart((event, data) => {
+            this.handleStreamStart(data);
+        });
+        
+        window.electronAPI.onStreamChunk((event, data) => {
+            this.handleStreamChunk(data);
+        });
+        
+        window.electronAPI.onStreamEnd((event, data) => {
+            this.handleStreamEnd(data);
+        });
+        
+        window.electronAPI.onStreamError((event, data) => {
+            this.handleStreamError(data);
         });
     }
     
@@ -189,16 +230,51 @@ class LMStudioApp {
             // Mesaj geçmişini güncelle
             this.messages.push({ role: 'user', content: fullMessage });
             
-            const result = await window.electronAPI.sendChat(this.messages, this.currentModel);
+            // Streaming kontrolü
+            const isStreamingEnabled = document.getElementById('enableStreaming').checked;
             
-            if (result.success && result.data.choices && result.data.choices[0]) {
-                const aiResponse = result.data.choices[0].message.content;
-                this.addMessage('assistant', aiResponse);
+            if (isStreamingEnabled) {
+                // Streaming modunda
+                this.streamingMessageId = Date.now();
                 
-                // AI yanıtını mesaj geçmişine ekle
-                this.messages.push({ role: 'assistant', content: aiResponse });
+                // Typing indicator göster
+                if (this.settings.showTypingIndicator !== false) {
+                    this.showTypingIndicator();
+                }
+                
+                const settings = {
+                    temperature: parseFloat(document.getElementById('temperature').value),
+                    maxTokens: parseInt(document.getElementById('maxTokens').value),
+                    timeout: this.settings.timeout || 30
+                };
+                
+                const result = await window.electronAPI.sendChatStream(this.messages, this.currentModel, settings);
+                
+                if (!result.success) {
+                    throw new Error(result.error || 'Streaming yanıt alınamadı');
+                }
+                
+                // Token bilgisini güncelle
+                if (result && result.token_usage) {
+                    this.updateTokenInfo(result.token_usage.used, result.token_usage.max);
+                }
             } else {
-                throw new Error(result.error || 'AI yanıt veremedi');
+                // Normal modda
+                const result = await window.electronAPI.sendChat(this.messages, this.currentModel);
+                
+                if (result.success && result.data.choices && result.data.choices[0]) {
+                    const aiResponse = result.data.choices[0].message.content;
+                    this.addMessage('assistant', aiResponse);
+                    
+                    // AI yanıtını mesaj geçmişine ekle
+                    this.messages.push({ role: 'assistant', content: aiResponse });
+                    
+                    if (result.data.usage) {
+                        this.updateTokenInfo(result.data.usage.total_tokens, settings.maxTokens);
+                    }
+                } else {
+                    throw new Error(result.error || 'AI yanıt veremedi');
+                }
             }
         } catch (error) {
             console.error('Sohbet hatası:', error);
@@ -208,46 +284,29 @@ class LMStudioApp {
         }
     }
     
-    addMessage(sender, content) {
+    addMessage(role, content, returnElement = false) {
         const messagesContainer = document.getElementById('chatMessages');
-        
-        // Hoş geldin mesajını kaldır
-        const welcomeMessage = messagesContainer.querySelector('.welcome-message');
-        if (welcomeMessage) {
-            welcomeMessage.remove();
-        }
-        
-        // Yeni mesaj elementi oluştur
-        const messageElement = document.createElement('div');
-        messageElement.className = `message ${sender}`;
-        
-        const avatar = document.createElement('div');
-        avatar.className = 'message-avatar';
-        if (sender === 'user') {
-            avatar.textContent = '👤';
-        } else if (sender === 'system') {
-            avatar.textContent = '📎';
-            messageElement.classList.add('system-message');
+        const msgDiv = document.createElement('div');
+        msgDiv.className = role === 'user' ? 'user-message' : 'ai-message';
+        if (role === 'assistant') {
+            msgDiv.innerHTML = `<div class="message-content">${this.formatMessage(content)}</div>`;
         } else {
-            avatar.textContent = '🤖';
+            msgDiv.textContent = content;
         }
-        
-        const messageContent = document.createElement('div');
-        messageContent.className = 'message-content';
-        messageContent.textContent = content;
-        
-        const messageTime = document.createElement('div');
-        messageTime.className = 'message-time';
-        messageTime.textContent = new Date().toLocaleTimeString('tr-TR');
-        
-        messageContent.appendChild(messageTime);
-        messageElement.appendChild(avatar);
-        messageElement.appendChild(messageContent);
-        
-        messagesContainer.appendChild(messageElement);
-        
-        // Son mesaja kaydır
+        messagesContainer.appendChild(msgDiv);
         messagesContainer.scrollTop = messagesContainer.scrollHeight;
+        if (returnElement) return msgDiv;
+    }
+
+    formatMessage(text) {
+        // Basit markdown ve kod blokları desteği
+        // Kod bloklarını <pre><code> ile, kalın yazıyı <strong> ile, italik <em> ile göster
+        let formatted = text
+            .replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>')
+            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+            .replace(/\*(.*?)\*/g, '<em>$1</em>')
+            .replace(/\n/g, '<br>');
+        return formatted;
     }
     
     setLoading(loading) {
@@ -533,6 +592,116 @@ class LMStudioApp {
                 button.style.backgroundColor = '#059669';
                 button.disabled = false;
             }, 3000);
+        }
+    }
+    
+    // Streaming handlers
+    handleStreamStart(data) {
+        this.hideTypingIndicator();
+        
+        // Boş assistant mesajı oluştur
+        this.currentStreamingMessage = this.addMessage('assistant', '', true);
+        
+        // Streaming status göster
+        this.showStreamingStatus();
+    }
+    
+    handleStreamChunk(data) {
+        if (this.currentStreamingMessage) {
+            const messageContent = this.currentStreamingMessage.querySelector('.message-content');
+            if (messageContent) {
+                messageContent.innerHTML = this.formatMessage(data.fullContent);
+            }
+        }
+    }
+    
+    handleStreamEnd(data) {
+        if (this.currentStreamingMessage) {
+            this.currentStreamingMessage.classList.remove('streaming');
+            const messageContent = this.currentStreamingMessage.querySelector('.message-content');
+            if (messageContent) {
+                messageContent.innerHTML = this.formatMessage(data.content);
+            }
+            // Zaman damgası ekle
+            if (!messageContent.querySelector('.message-time')) {
+                const newTimeElement = document.createElement('div');
+                newTimeElement.className = 'message-time';
+                newTimeElement.textContent = new Date().toLocaleTimeString('tr-TR');
+                messageContent.appendChild(newTimeElement);
+            }
+        }
+        // Token bilgisini güncelle
+        if (data && data.token_usage) {
+            this.updateTokenInfo(data.token_usage.used, data.token_usage.max);
+        }
+    }
+    
+    handleStreamError(data) {
+        this.hideTypingIndicator();
+        this.hideStreamingStatus();
+        
+        if (this.currentStreamingMessage) {
+            this.currentStreamingMessage.remove();
+        }
+        
+        this.addMessage('assistant', `❌ Streaming hatası: ${data.error}`);
+        this.currentStreamingMessage = null;
+        this.setLoading(false);
+    }
+    
+    showTypingIndicator() {
+        const messagesContainer = document.getElementById('chatMessages');
+        
+        // Önceki typing indicator'ı kaldır
+        this.hideTypingIndicator();
+        
+        const typingElement = document.createElement('div');
+        typingElement.className = 'typing-indicator';
+        typingElement.id = 'typingIndicator';
+        
+        typingElement.innerHTML = `
+            <div class="message-avatar" style="background-color: var(--success-color); color: white;">🤖</div>
+            <div style="display: flex; align-items: center; gap: var(--spacing-2);">
+                <span>AI yazıyor</span>
+                <div class="typing-dots">
+                    <div class="typing-dot"></div>
+                    <div class="typing-dot"></div>
+                    <div class="typing-dot"></div>
+                </div>
+            </div>
+        `;
+        
+        messagesContainer.appendChild(typingElement);
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
+    
+    hideTypingIndicator() {
+        const typingIndicator = document.getElementById('typingIndicator');
+        if (typingIndicator) {
+            typingIndicator.remove();
+        }
+    }
+    
+    showStreamingStatus() {
+        const messagesContainer = document.getElementById('chatMessages');
+        
+        const statusElement = document.createElement('div');
+        statusElement.className = 'streaming-status';
+        statusElement.id = 'streamingStatus';
+        
+        statusElement.innerHTML = `
+            <div class="streaming-icon"></div>
+            <span>⚡ Gerçek zamanlı yanıt alınıyor...</span>
+        `;
+        
+        messagesContainer.appendChild(statusElement);
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+    }
+    
+    hideStreamingStatus() {
+        const streamingStatus = document.getElementById('streamingStatus');
+        if (streamingStatus) {
+            streamingStatus.remove();
         }
     }
 }
