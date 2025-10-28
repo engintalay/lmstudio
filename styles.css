@@ -49,6 +49,13 @@
     --radius-xl: 1rem;
 }
 
+body, html {
+    height: 100%;
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
 body {
     font-family: var(--font-family);
     font-size: var(--font-size-base);
@@ -59,9 +66,18 @@ body {
 }
 
 .app-container {
+    height: 100vh;
+    min-height: 100vh;
+    width: 100vw;
+    min-width: 100vw;
     display: flex;
     flex-direction: column;
-    height: 100vh;
+}
+
+.main-content {
+    flex: 1;
+    display: flex;
+    height: 100%;
 }
 
 /* Üst Bar */
@@ -146,7 +162,6 @@ body {
     overflow: hidden;
 }
 
-/* Yan Panel */
 .sidebar {
     width: 300px;
     background-color: var(--surface-color);
@@ -154,6 +169,7 @@ body {
     display: flex;
     flex-direction: column;
     overflow-y: auto;
+    height: 100%;
 }
 
 .sidebar-section {
@@ -350,8 +366,10 @@ body {
 }
 
 .chat-messages {
-    flex: 1;
+    height: calc(100vh - 180px);
     overflow-y: auto;
+    width: 100%;
+    box-sizing: border-box;
     padding: var(--spacing-4);
     display: flex;
     flex-direction: column;
@@ -525,6 +543,8 @@ body {
     padding: var(--spacing-4);
     background-color: var(--background-color);
     border-top: 1px solid var(--border-color);
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .input-group {
@@ -648,6 +668,35 @@ body {
 }
 .header-button#stopButton:hover {
     background: #b91c1c;
+}
+
+/* Düzenle ve Tekrar Gönder Butonları */
+.edit-btn, .resend-btn {
+    display: inline-block;
+    margin: 4px 4px 0 0;
+    padding: 4px 12px;
+    font-size: 14px;
+    background: #e0e7ef;
+    color: #2563eb;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.2s, color 0.2s;
+}
+.edit-btn:hover {
+    background: #2563eb;
+    color: #fff;
+}
+.resend-btn {
+    background: #f3f4f6;
+    color: #059669;
+}
+.resend-btn:hover {
+    background: #059669;
+    color: #fff;
+}
+.user-message .edit-btn, .user-message .resend-btn {
+    margin-top: 8px;
 }
 
 /* Animasyonlar */

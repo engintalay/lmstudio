@@ -79,10 +79,25 @@ class LMStudioApp {
         }
     }
     
-    updateTokenInfo(used, max) {
+    updateTokenInfo(usage, max) {
         const tokenInfo = document.getElementById('tokenInfo');
+        // usage objesini debug için konsola yaz
+        console.log('Token usage:', usage);
         if (tokenInfo) {
-            tokenInfo.textContent = `Token: ${used} / ${max}`;
+            if (usage && typeof usage === 'object') {
+                if (usage.total_tokens) {
+                    tokenInfo.textContent = `Kullanılan Token: ${usage.total_tokens}`;
+                    console.log('Kullanılan Token:', usage.total_tokens);
+                } else if (usage.used) {
+                    tokenInfo.textContent = `Kullanılan Token: ${usage.used} / Maksimum: ${usage.max || max || ''}`;
+                    console.log('Kullanılan Token:', usage.used, 'Maksimum:', usage.max || max || '');
+                } else {
+                    tokenInfo.textContent = `Token Bilgisi: ${JSON.stringify(usage)}`;
+                    console.log('Token Bilgisi:', usage);
+                }
+            } else {
+                tokenInfo.textContent = '';
+            }
         }
     }
     
@@ -274,31 +289,23 @@ class LMStudioApp {
     async sendMessage() {
         const messageInput = document.getElementById('messageInput');
         const message = messageInput.value.trim();
-        
-        if (!message || this.isLoading) {
-            return;
-        }
-        
+        if (!message || this.isLoading) return;
         // Kullanıcı mesajını ekle
         this.addMessage('user', message);
-        
         // Mesajı aktif sohbete kaydet
         this.chats[this.currentChatIndex].messages.push({ role: 'user', content: message });
-        
+        // Mesaj kutucuğunu temizle
+        messageInput.value = '';
         // Yükleme durumunu başlat
         this.setLoading(true);
-        
-        // AI yanıtını al
         try {
             // Dosya içeriği varsa mesaja ekle
             let fullMessage = message;
             if (this.currentFile && this.fileContent) {
                 fullMessage = `Eklenen dosya: ${this.currentFile.name}\n\nDosya içeriği:\n${this.fileContent}\n\nKullanıcı sorusu: ${message}`;
             }
-            
-            // Sadece son mesajı gönder
-            const messagesToSend = [{ role: 'user', content: fullMessage }];
-            
+            // Sohbetin tüm geçmişini API'ye gönder
+            const messagesToSend = this.chats[this.currentChatIndex].messages.map(m => ({ role: m.role, content: m.content }));
             // Streaming kontrolü
             const isStreamingEnabled = document.getElementById('enableStreaming').checked;
             const settings = {
@@ -306,39 +313,26 @@ class LMStudioApp {
                 maxTokens: parseInt(document.getElementById('maxTokens').value),
                 timeout: this.settings.timeout || 30
             };
-            
             if (isStreamingEnabled) {
-                // Streaming modunda
                 this.streamingMessageId = Date.now();
-                
-                // Typing indicator göster
                 if (this.settings.showTypingIndicator !== false) {
                     this.showTypingIndicator();
                 }
-                
                 const result = await window.electronAPI.sendChatStream(messagesToSend, this.currentModel, settings);
-                
                 if (!result.success) {
                     throw new Error(result.error || 'Streaming yanıt alınamadı');
                 }
-                
-                // Token bilgisini güncelle
                 if (result && result.token_usage) {
-                    this.updateTokenInfo(result.token_usage.used, result.token_usage.max);
+                    this.updateTokenInfo(result.token_usage, result.token_usage?.max);
                 }
             } else {
-                // Normal modda
                 const result = await window.electronAPI.sendChat(messagesToSend, this.currentModel);
-                
                 if (result.success && result.data.choices && result.data.choices[0]) {
                     const aiResponse = result.data.choices[0].message.content;
                     this.addMessage('assistant', aiResponse);
-                    
-                    // AI yanıtını mesaj geçmişine ekle
                     this.chats[this.currentChatIndex].messages.push({ role: 'assistant', content: aiResponse });
-                    
-                    if (result.data.usage) {
-                        this.updateTokenInfo(result.data.usage.total_tokens, settings.maxTokens);
+                    if (result.usage) {
+                        this.updateTokenInfo(result.usage, settings.maxTokens);
                     }
                 } else {
                     throw new Error(result.error || 'AI yanıt veremedi');
@@ -357,7 +351,11 @@ class LMStudioApp {
         const msgDiv = document.createElement('div');
         msgDiv.className = role === 'user' ? 'user-message' : 'ai-message';
         if (role === 'assistant') {
-            msgDiv.innerHTML = `<div class="message-content">${this.formatMessage(content)}</div>`;
+            msgDiv.innerHTML = `<div class="message-content">${this.formatMessage(content)}</div><button class="copy-btn">Kopyala</button>`;
+            // Kopyala butonu
+            msgDiv.querySelector('.copy-btn').addEventListener('click', () => {
+                navigator.clipboard.writeText(content);
+            });
         } else if (role === 'user') {
             msgDiv.innerHTML = `<div class="message-content">${content}</div><button class="edit-btn">Düzenle</button><button class="resend-btn">Tekrar Gönder</button>`;
             // Düzenle butonu
@@ -730,7 +728,7 @@ class LMStudioApp {
         }
         // Token bilgisini güncelle
         if (data && data.token_usage) {
-            this.updateTokenInfo(data.token_usage.used, data.token_usage.max);
+            this.updateTokenInfo(data.token_usage, data.token_usage?.max);
         }
         // Streaming status ibaresini kaldır ve yanıt tamamlandı mesajı göster
         this.hideStreamingStatus();
@@ -808,34 +806,43 @@ class LMStudioApp {
         }
     }
     
-    exportChatDocx() {
-        // Basit metin tabanlı DOCX export
+    async exportChatDocx() {
+        // Gerçek DOCX çıktısı için docx kütüphanesi
+        const { Document, Packer, Paragraph, TextRun } = require('docx');
         const chat = this.chats[this.currentChatIndex];
-        let docText = '';
+        const doc = new Document();
         chat.messages.forEach(msg => {
-            docText += `${msg.role === 'user' ? 'Kullanıcı' : 'Asistan'}: ${msg.content}\n\n`;
+            doc.addSection({
+                children: [
+                    new Paragraph({
+                        children: [
+                            new TextRun({
+                                text: `${msg.role === 'user' ? 'Kullanıcı' : 'Asistan'}: ${msg.content}`,
+                                break: 1
+                            })
+                        ]
+                    })
+                ]
+            });
         });
-        // Mammoth ile DOCX oluşturulabilir, burada basit bir blob ile indiriliyor
-        const blob = new Blob([docText], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+        const buffer = await Packer.toBlob(doc);
         const link = document.createElement('a');
-        link.href = URL.createObjectURL(blob);
+        link.href = URL.createObjectURL(buffer);
         link.download = `${chat.name}.docx`;
         link.click();
     }
 
-    exportChatPdf() {
-        // Basit metin tabanlı PDF export
+    async exportChatPdf() {
+        // Gerçek PDF çıktısı için jsPDF
+        const { jsPDF } = require('jspdf');
         const chat = this.chats[this.currentChatIndex];
-        let pdfText = '';
+        const doc = new jsPDF();
+        let y = 10;
         chat.messages.forEach(msg => {
-            pdfText += `${msg.role === 'user' ? 'Kullanıcı' : 'Asistan'}: ${msg.content}\n\n`;
+            doc.text(`${msg.role === 'user' ? 'Kullanıcı' : 'Asistan'}: ${msg.content}`, 10, y);
+            y += 10;
         });
-        // jsPDF ile PDF oluşturulabilir, burada basit bir blob ile indiriliyor
-        const blob = new Blob([pdfText], { type: 'application/pdf' });
-        const link = document.createElement('a');
-        link.href = URL.createObjectURL(blob);
-        link.download = `${chat.name}.pdf`;
-        link.click();
+        doc.save(`${chat.name}.pdf`);
     }
     
     async summarizeChat(updateHistory = false) {

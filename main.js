@@ -105,8 +105,11 @@ ipcMain.handle('lm-studio-chat', async (event, messages, model = null) => {
       max_tokens: 1000
     };
 
-    const response = await axios.post(`${LM_STUDIO_BASE_URL}/v1/chat/completions`, payload);
-    return { success: true, data: response.data };
+  const response = await axios.post(`${LM_STUDIO_BASE_URL}/v1/chat/completions`, payload);
+  console.log('LM Studio chat yanıtı:', response.data);
+  // Token kullanımı varsa ekle
+  let usage = response.data.usage || null;
+  return { success: true, data: response.data, usage };
   } catch (error) {
     console.error('Sohbet isteği başarısız:', error.message);
     return { success: false, error: error.message };
@@ -177,8 +180,14 @@ ipcMain.handle('lm-studio-chat-stream', async (event, messages, model = null, se
       });
 
       response.data.on('end', () => {
-        event.sender.send('stream-end', { content: fullResponse });
-        resolve({ success: true, content: fullResponse, completed: true });
+        // Yanıtı konsola yaz
+        console.log('LM Studio stream yanıtı:', response.data);
+        let usage = null;
+        try {
+          if (response.data.usage) usage = response.data.usage;
+        } catch {}
+        event.sender.send('stream-end', { content: fullResponse, token_usage: usage });
+        resolve({ success: true, content: fullResponse, completed: true, token_usage: usage });
       });
 
       response.data.on('error', (error) => {
