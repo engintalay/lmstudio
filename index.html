@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LM Studio Desktop</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- Üst Bar -->
+        <header class="header">
+            <div class="header-content">
+                <h1 class="app-title">🤖 LM Studio Desktop</h1>
+                <div class="connection-status" id="connectionStatus">
+                    <span class="status-indicator" id="statusIndicator"></span>
+                    <span id="statusText">Bağlantı kontrol ediliyor...</span>
+                </div>
+            </div>
+        </header>
+
+        <!-- Ana İçerik -->
+        <main class="main-content">
+            <!-- Yan Panel -->
+            <aside class="sidebar">
+                <div class="sidebar-section">
+                    <h3>📋 Modeller</h3>
+                    <div class="model-list" id="modelList">
+                        <p class="loading">Modeller yükleniyor...</p>
+                    </div>
+                </div>
+                
+                <div class="sidebar-section">
+                    <h3>📎 Dosya Ekleme</h3>
+                    <div class="file-section">
+                        <button class="file-button" id="selectFileButton">
+                            📁 Dosya Seç
+                        </button>
+                        <div class="file-info" id="fileInfo" style="display: none;">
+                            <div class="file-name" id="fileName"></div>
+                            <div class="file-details" id="fileDetails"></div>
+                            <button class="remove-file" id="removeFile">❌ Kaldır</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="sidebar-section">
+                    <h3>⚙️ Hızlı Ayarlar</h3>
+                    <div class="settings">
+                        <label for="temperature">Sıcaklık (Temperature):</label>
+                        <input type="range" id="temperature" min="0" max="2" step="0.1" value="0.7">
+                        <span id="temperatureValue">0.7</span>
+                        
+                        <label for="maxTokens">Maksimum Token:</label>
+                        <input type="number" id="maxTokens" min="1" max="4000" value="1000">
+                        
+                        <button class="settings-button" id="openSettingsButton">
+                            🔧 Gelişmiş Ayarlar
+                        </button>
+                    </div>
+                </div>
+            </aside>
+
+            <!-- Sohbet Alanı -->
+            <section class="chat-area">
+                <div class="chat-header">
+                    <h2>💬 Sohbet</h2>
+                    <button class="clear-chat" id="clearChat">🗑️ Temizle</button>
+                </div>
+                
+                <div class="chat-messages" id="chatMessages">
+                    <div class="welcome-message">
+                        <h3>LM Studio Desktop'a Hoş Geldiniz! 🎉</h3>
+                        <p>Yerel AI modellerinizle sohbet etmeye başlamak için aşağıdaki mesaj kutusunu kullanın.</p>
+                        <p><strong>Not:</strong> LM Studio'nun çalışır durumda olduğundan ve bir model yüklendiğinden emin olun.</p>
+                    </div>
+                </div>
+                
+                <div class="chat-input-area">
+                    <div class="input-group">
+                        <textarea 
+                            id="messageInput" 
+                            placeholder="Mesajınızı buraya yazın..." 
+                            rows="3"
+                        ></textarea>
+                        <button id="sendButton" class="send-button">
+                            <span class="button-text">Gönder</span>
+                            <span class="button-icon">📤</span>
+                        </button>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- Ayarlar Modal Ekranı -->
+    <div class="modal-overlay" id="settingsModal" style="display: none;">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>⚙️ Gelişmiş Ayarlar</h2>
+                <button class="close-button" id="closeSettingsButton">✕</button>
+            </div>
+            
+            <div class="modal-body">
+                <div class="settings-tabs">
+                    <button class="tab-button active" data-tab="server">🖥️ Sunucu</button>
+                    <button class="tab-button" data-tab="interface">🎨 Arayüz</button>
+                    <button class="tab-button" data-tab="chat">💬 Sohbet</button>
+                    <button class="tab-button" data-tab="files">📎 Dosyalar</button>
+                </div>
+                
+                <div class="settings-content">
+                    <!-- Sunucu Ayarları -->
+                    <div class="tab-content active" id="server-tab">
+                        <div class="setting-group">
+                            <h3>LM Studio Bağlantısı</h3>
+                            <label for="serverUrl">Sunucu URL'si:</label>
+                            <input type="text" id="serverUrl" value="http://localhost:1234" placeholder="http://localhost:1234">
+                            
+                            <label for="apiKey">API Anahtarı (Opsiyonel):</label>
+                            <input type="password" id="apiKey" placeholder="API anahtarınızı girin">
+                            
+                            <label for="timeout">Bağlantı Zaman Aşımı (saniye):</label>
+                            <input type="number" id="timeout" min="5" max="300" value="30">
+                            
+                            <button class="test-connection" id="testConnectionButton">
+                                🔍 Bağlantıyı Test Et
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <!-- Arayüz Ayarları -->
+                    <div class="tab-content" id="interface-tab">
+                        <div class="setting-group">
+                            <h3>Görünüm Ayarları</h3>
+                            <label for="theme">Tema:</label>
+                            <select id="theme">
+                                <option value="light">🌞 Açık Tema</option>
+                                <option value="dark">🌙 Koyu Tema</option>
+                                <option value="auto">⚡ Sistem Teması</option>
+                            </select>
+                            
+                            <label for="fontSize">Yazı Boyutu:</label>
+                            <select id="fontSize">
+                                <option value="small">Küçük</option>
+                                <option value="medium" selected>Orta</option>
+                                <option value="large">Büyük</option>
+                            </select>
+                            
+                            <div class="checkbox-group">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="showTimestamps" checked>
+                                    <span class="checkbox-text">Mesaj zamanlarını göster</span>
+                                </label>
+                                
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="soundNotifications">
+                                    <span class="checkbox-text">Ses bildirimleri</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Sohbet Ayarları -->
+                    <div class="tab-content" id="chat-tab">
+                        <div class="setting-group">
+                            <h3>Sohbet Davranışı</h3>
+                            <label for="defaultTemperature">Varsayılan Sıcaklık:</label>
+                            <input type="range" id="defaultTemperature" min="0" max="2" step="0.1" value="0.7">
+                            <span id="defaultTemperatureValue">0.7</span>
+                            
+                            <label for="defaultMaxTokens">Varsayılan Maksimum Token:</label>
+                            <input type="number" id="defaultMaxTokens" min="1" max="8000" value="1000">
+                            
+                            <label for="systemPrompt">Sistem İstemcisi:</label>
+                            <textarea id="systemPrompt" rows="4" placeholder="AI'ya özel talimatlar verebilirsiniz..."></textarea>
+                            
+                            <div class="checkbox-group">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="autoSave" checked>
+                                    <span class="checkbox-text">Sohbet geçmişini otomatik kaydet</span>
+                                </label>
+                                
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="contextMemory" checked>
+                                    <span class="checkbox-text">Bağlam hafızasını kullan</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Dosya Ayarları -->
+                    <div class="tab-content" id="files-tab">
+                        <div class="setting-group">
+                            <h3>Dosya İşleme</h3>
+                            <label for="maxFileSize">Maksimum Dosya Boyutu (MB):</label>
+                            <input type="number" id="maxFileSize" min="1" max="100" value="10">
+                            
+                            <label for="textPreviewLength">Metin Önizleme Uzunluğu:</label>
+                            <input type="number" id="textPreviewLength" min="100" max="2000" value="500">
+                            
+                            <div class="checkbox-group">
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="autoIncludeFiles" checked>
+                                    <span class="checkbox-text">Dosyaları otomatik olarak sohbete dahil et</span>
+                                </label>
+                                
+                                <label class="checkbox-label">
+                                    <input type="checkbox" id="showFilePreview" checked>
+                                    <span class="checkbox-text">Dosya önizlemesini göster</span>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="modal-footer">
+                <button class="button secondary" id="resetSettingsButton">
+                    🔄 Varsayılanları Sıfırla
+                </button>
+                <div class="button-group">
+                    <button class="button secondary" id="cancelSettingsButton">
+                        ❌ İptal
+                    </button>
+                    <button class="button primary" id="saveSettingsButton">
+                        💾 Kaydet
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="renderer.js"></script>
+</body>
+</html>

@@ -1,0 +1,191 @@
+# Node.js Dependencies
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+package-lock.json
+yarn.lock
+
+# Electron Build Files
+dist/
+build/
+out/
+app-builds/
+release-builds/
+
+# Electron Cache and Temp Files
+.electron-builder/
+.electron/
+*.dmg
+*.AppImage
+*.snap
+*.exe
+*.msi
+*.deb
+*.rpm
+*.tar.gz
+
+# OS Generated Files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+desktop.ini
+
+# IDE and Editor Files
+.vscode/settings.json
+.vscode/launch.json
+.vscode/extensions.json
+.idea/
+*.swp
+*.swo
+*~
+.sublime-workspace
+.sublime-project
+
+# Environment Variables
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
+
+# Runtime Data
+pids/
+*.pid
+*.seed
+*.pid.lock
+
+# Coverage Directory Used by Tools like Istanbul
+coverage/
+*.lcov
+
+# nyc Test Coverage
+.nyc_output
+
+# Grunt Intermediate Storage
+.grunt
+
+# Bower Dependency Directory
+bower_components
+
+# Node-waf Configuration
+.lock-wscript
+
+# Compiled Binary Addons
+build/Release
+
+# Dependency Directories
+jspm_packages/
+
+# TypeScript Cache
+*.tsbuildinfo
+
+# Optional npm Cache Directory
+.npm
+
+# Optional eslint Cache
+.eslintcache
+
+# Microbundle Cache
+.rpt2_cache/
+.rts2_cache_cjs/
+.rts2_cache_es/
+.rts2_cache_umd/
+
+# Optional REPL History
+.node_repl_history
+
+# Output of 'npm pack'
+*.tgz
+
+# Yarn Integrity File
+.yarn-integrity
+
+# User Settings and Data
+settings.json
+user-data/
+app-data/
+
+# Temporary Files
+temp/
+tmp/
+*.tmp
+*.temp
+
+# Application Specific
+uploads/
+downloads/
+cache/
+
+# Auto-generated Files
+auto-updater/
+
+# Windows Shortcuts
+*.lnk
+
+# macOS
+.AppleDouble
+.LSOverride
+Icon
+
+# Windows
+[Tt]humbs.db
+[Dd]esktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+
+# Linux
+*~
+
+# Archives
+*.7z
+*.rar
+*.tar
+*.zip
+*.gzip
+*.bz2
+*.xz
+
+# Backup Files
+*.bak
+*.backup
+*.old
+*.orig
+
+# Test Files (optional - uncomment if needed)
+# test-results/
+# coverage/
+# .mocha/
+
+# Security Files (never commit these)
+*.key
+*.pem
+*.p12
+*.cer
+*.crt
+secrets/
+private/
+
+# Large Files (Git LFS should be used instead)
+*.mov
+*.mp4
+*.avi
+*.mkv
+*.iso
+*.img
